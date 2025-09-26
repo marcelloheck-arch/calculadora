@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Calculadora de Precificação — MVP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --primary: #0f766e;
+      --accent: #06b6d4;
+      --danger: #ef4444;
+      --muted: #6b7280;
+      --round: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      color: #0f172a;
+    }
+    header {
+      background: linear-gradient(90deg, var(--primary), #064e3b);
+      color: white;
+      padding: clamp(20px, 4vw, 36px) 16px;
+      text-align: center;
+      box-shadow: 0 6px 22px rgba(2,6,23,0.12);
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+    }
+    header p {
+      margin: 8px 0 0;
+      color: rgba(255,255,255,0.92);
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    }
+    .container {
+      max-width: 1180px;
+      margin: 20px auto;
+      padding: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--round);
+      padding: 16px;
+      box-shadow: 0 4px 14px rgba(15,23,42,0.06);
+    }
+    h2 {
+      margin: 0 0 12px;
+      color: var(--primary);
+      font-size: clamp(1.1rem, 3vw, 1.4rem);
+    }
+    label {
+      display: block;
+      margin: 6px 0 6px;
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+    input[type="number"], select, input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e6eef0;
+      background: #fcfeff;
+      font-size: 1rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      min-height: 44px; /* acessibilidade toque */
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-ghost { background: transparent; border: 1px solid rgba(15,23,42,0.1); }
+    .btn-danger { background: var(--danger); color: white; }
+    .small { font-size: 0.9rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th { background: #f0fdfa; color: #064e3b; }
+    tbody tr:hover { background: #fbfdff; }
+    .tbl-input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #eef6f7;
+    }
+    .result-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(2,6,23,0.1);
+    }
+    .result-line:last-child { border: none; }
+    .big {
+      font-size: clamp(1.1rem, 4vw, 1.4rem);
+      font-weight: 700;
+      color: #053f3a;
+    }
+    .chart-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas { max-width: 100% !important; height: auto !important; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    footer {
+      margin: 20px auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 10px;
+    }
+    .table-wrapper { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Calculadora de Precificação</h1>
+    <p>Valide preços no Simples Nacional em qualquer dispositivo</p>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <!-- Entradas -->
+      <section class="card">
+        <h2>Entradas</h2>
+        <div class="card" style="margin-bottom:16px">
+          <label>Faixa Simples Nacional / MEI</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <select id="select-simples">
+              <option value="0.04">1ª Faixa — Até R$ 180.000 (4%)</option>
+              <option value="0.073">2ª Faixa — Até R$ 360.000 (7,3%)</option>
+              <option value="0.095">3ª Faixa — Até R$ 720.000 (9,5%)</option>
+              <option value="0.107">4ª Faixa — Até R$ 1.800.000 (10,7%)</option>
+              <option value="0.143">5ª Faixa — Até R$ 3.600.000 (14,3%)</option>
+              <option value="0.19">6ª Faixa — Até R$ 4.800.000 (19%)</option>
+            </select>
+            <label><input type="checkbox" id="checkbox-mei"> Sou MEI</label>
+          </div>
+          <p class="small">Se MEI, imposto aplicado será 0%</p>
+        </div>
+
+        <div>
+          <label>Itens</label>
+          <div class="table-wrapper">
+            <table id="materials-table">
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>Qtd</th>
+                  <th>Valor Unit.</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn btn-ghost" id="btn-add">+ Adicionar item</button>
+            <button class="btn btn-danger" id="btn-clear-all">Limpar Tudo</button>
+            <button class="btn btn-primary" id="btn-import">Importar Planilha</button>
+            <button class="btn btn-primary" id="btn-search">Pesquisar Item/Cliente</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <label>Margem de Lucro (%)</label>
+          <input id="input-margem" type="number" min="0" step="0.1" value="20">
+        </div>
+      </section>
+
+      <!-- Resultados -->
+      <aside>
+        <div class="card">
+          <h2>Resultados</h2>
+          <div class="result-line"><span>Custo Total</span><span id="custo-total" class="big">R$ 0,00</span></div>
+          <div class="result-line"><span>Impostos</span><span id="impostos" class="big">R$ 0,00</span></div>
+          <div class="result-line"><span>Preço Sugerido</span><span id="preco-sugerido" class="big">R$ 0,00</span></div>
+          <div class="result-line"><span>Lucro Líquido</span><span id="lucro" class="big">R$ 0,00</span></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Composição</h2>
+          <div class="chart-wrap"><canvas id="pie-chart"></canvas></div>
+        </div>
+      </aside>
+    </div>
+    <footer>Protótipo responsivo — Testado em desktop, tablet e celular</footer>
+  </main>
+
+  <script>
+    let materials = [];
+    let pieChart = null;
+
+    const tbody = document.querySelector('#materials-table tbody');
+    const selectSimples = document.getElementById('select-simples');
+    const checkboxMei = document.getElementById('checkbox-mei');
+    const inputMargem = document.getElementById('input-margem');
+    const elCusto = document.getElementById('custo-total');
+    const elImpostos = document.getElementById('impostos');
+    const elPreco = document.getElementById('preco-sugerido');
+    const elLucro = document.getElementById('lucro');
+
+    function currency(v) {
+      return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    }
+
+    function renderMaterials() {
+      tbody.innerHTML = '';
+      materials.forEach((m, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input class="tbl-input" type="text" value="${m.desc}" data-i="${i}" data-f="desc"></td>
+          <td><input class="tbl-input" type="number" value="${m.qty}" min="0" data-i="${i}" data-f="qty"></td>
+          <td><input class="tbl-input" type="number" value="${m.price}" min="0" step="0.01" data-i="${i}" data-f="price"></td>
+          <td id="tot-${i}">${currency(m.qty * m.price)}</td>
+          <td><button class="btn btn-danger" onclick="removeItem(${i})">X</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', e => {
+          const i = e.target.dataset.i, f = e.target.dataset.f;
+          materials[i][f] = f === 'desc' ? e.target.value : parseFloat(e.target.value) || 0;
+          calc();
+        });
+      });
+    }
+
+    function addItem() {
+      materials.push({desc: '', qty: 0, price: 0});
+      renderMaterials();
+      calc();
+    }
+
+    function removeItem(i) {
+      materials.splice(i, 1);
+      renderMaterials();
+      calc();
+    }
+
+    function clearAll() {
+      materials = [];
+      renderMaterials();
+      calc();
+    }
+
+    function calc() {
+      const custo = materials.reduce((s, m) => s + m.qty * m.price, 0);
+      let simples = parseFloat(selectSimples.value) || 0;
+      if (checkboxMei.checked) simples = 0;
+      const margem = (parseFloat(inputMargem.value) || 0) / 100;
+      const preco = custo / (1 - margem - simples);
+      const impostos = preco * simples;
+      const lucro = preco - custo - impostos;
+
+      elCusto.textContent = currency(custo);
+      elImpostos.textContent = currency(impostos);
+      elPreco.textContent = currency(preco > 0 ? preco : 0);
+      elLucro.textContent = currency(lucro);
+
+      updateChart(custo, impostos, lucro);
+      materials.forEach((m, i) => {
+        const cell = document.getElementById('tot-' + i);
+        if (cell) cell.textContent = currency(m.qty * m.price);
+      });
+    }
+
+    function updateChart(c, i, l) {
+      if (!pieChart) {
+        pieChart = new Chart(document.getElementById('pie-chart'), {
+          type: 'pie',
+          data: {
+            labels: ['Custos', 'Impostos', 'Lucro'],
+            datasets: [{
+              data: [c, i, l],
+              backgroundColor: ['#60a5fa', '#f87171', '#34d399']
+            }]
+          },
+          options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        });
+      } else {
+        pieChart.data.datasets[0].data = [c, i, l];
+        pieChart.update();
+      }
+    }
+
+    function importCSV(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const contents = e.target.result;
+          console.log(contents); // Aqui você pode manipular a planilha, por enquanto só logando no console.
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    document.getElementById('btn-add').onclick = addItem;
+    document.getElementById('btn-clear-all').onclick = clearAll;
+    document.getElementById('btn-import').addEventListener('click', () => {
+      const inputFile = document.createElement('input');
+      inputFile.type = 'file';
+      inputFile.accept = '.csv';
+      inputFile.addEventListener('change', importCSV);
+      inputFile.click();
+    });
+    document.getElementById('btn-search').onclick = () => {
+      alert("Funcionalidade de pesquisa não implementada ainda.");
+    };
+    selectSimples.oninput = calc;
+    checkboxMei.onchange = calc;
+    inputMargem.oninput = calc;
+
+    calc();
+  </script>
+</body>
+</html>
